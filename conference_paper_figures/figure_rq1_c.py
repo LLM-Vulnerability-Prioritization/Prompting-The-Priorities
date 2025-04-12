@@ -55,6 +55,23 @@ def convert_to_ordinal(decisions):
     
     return np.array([ordinal_map.get(decision, 0) for decision in decisions])
 
+# Function to process LLM names for display
+def process_llm_name(llm_name):
+    if '/' in llm_name:
+        # Extract content between / and the next -
+        parts = llm_name.split('/')
+        if len(parts) > 1:
+            after_slash = parts[-1]
+            if '-' in after_slash:
+                result = after_slash.split('-', 1)[0]
+            else:
+                result = after_slash
+            # Capitalize the first letter
+            return result[0].upper() + result[1:] if result else result
+    
+    # If no /, just return the original name
+    return llm_name
+
 # Reset all rcParams to defaults
 plt.rcParams.update(plt.rcParamsDefault)
 
@@ -190,8 +207,9 @@ if not results_df.empty:
     colors = ['#1f77b4', '#ff7f0e']  # Blue for weighted, orange for unweighted
     patterns = ['/', '\\']  # Different hatch patterns
     
-    # Get the LLMs in order
+    # Get the LLMs in order and process their names for display
     llms = results_df['LLM'].tolist()
+    display_llms = [process_llm_name(llm) for llm in llms]
     x = np.arange(len(llms))
     width = 0.35  # Width of the bars
     
@@ -207,8 +225,8 @@ if not results_df.empty:
         for b in bar:
             b.set_hatch(pattern)
     
-    # Set x-axis ticks and labels
-    plt.xticks(x, llms, rotation=45, ha='right', fontsize=7)
+    # Set x-axis ticks and labels with processed names
+    plt.xticks(x, display_llms, rotation=45, ha='right', fontsize=7)
     
     # Set y-axis label and limits
     plt.ylabel('Cohen\'s κ', fontsize=8)
