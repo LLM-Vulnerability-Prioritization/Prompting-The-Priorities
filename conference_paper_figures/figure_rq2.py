@@ -113,6 +113,15 @@ legend_elements = []
 for llm in sorted(top_llms):
     # Use just the model name (after the last slash) for cleaner labels
     model_name = llm.split('/')[-1]
+    
+    # Extract the first word before the first hyphen
+    if '-' in model_name:
+        model_name = model_name.split('-', 1)[0]
+    
+    # Capitalize the first letter
+    if model_name:
+        model_name = model_name[0].upper() + model_name[1:]
+    
     legend_elements.append(plt.Line2D([0], [0], marker=llm_markers[llm], color='w', 
                           markerfacecolor='gray', markersize=8, label=model_name))
 
@@ -131,6 +140,7 @@ llm_legend = ax.legend(handles=legend_elements[:len(top_llms)],
                      fontsize=8,
                      title_fontsize=9)
 ax.add_artist(llm_legend)
+
 decision_legend = ax.legend(handles=legend_elements[len(top_llms):], 
                            title="SSVC Decision Point", 
                            loc='upper left', 
@@ -152,7 +162,7 @@ ax.set_ylim(y_min, y_max)
 
 # Add labels with appropriate font sizes
 ax.set_xlabel('Prompting Technique', fontsize=10)
-ax.set_ylabel('F1 Score', fontsize=10)
+ax.set_ylabel('Harmonic Mean of Trial F1-Scores', fontsize=10)
 
 # Customize grid for better readability - horizontal lines only, lighter color
 ax.grid(True, axis='y', linestyle=':', alpha=0.7, color='lightgray')
