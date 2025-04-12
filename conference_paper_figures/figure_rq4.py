@@ -4,7 +4,7 @@ import numpy as np
 import seaborn as sns
 import matplotlib as mpl
 from matplotlib.patches import Patch
-import ssvc  # Assuming the ssvc module is available
+import ssvc
 
 # Configure matplotlib for high-quality output
 mpl.rcParams['pdf.fonttype'] = 42  # Ensures fonts are embedded properly
@@ -176,14 +176,19 @@ for i, category in enumerate(category_order):
             ax.text(pos[j], v + 5, str(int(v)), ha='center', va='bottom', 
                    fontsize=9, fontweight='bold', color='black')
 
-# Set the x-axis labels
+# Set x-ticks and labels with processed names using a list comprehension
 ax.set_xticks(x)
-ax.set_xticklabels(llms, rotation=45, ha='right')
+ax.set_xticklabels([(llm.split('/')[-1].split('-', 1)[0][0].upper() + llm.split('/')[-1].split('-', 1)[0][1:]) 
+                    if '/' in llm and '-' in llm.split('/')[-1] 
+                    else (llm.split('/')[-1][0].upper() + llm.split('/')[-1][1:]) if '/' in llm 
+                    else (llm.split('-', 1)[0][0].upper() + llm.split('-', 1)[0][1:]) if '-' in llm 
+                    else (llm[0].upper() + llm[1:]) for llm in llms], 
+                   rotation=45, ha='right')
 ax.set_xlabel('LLM Model', fontsize=12)
 ax.set_ylabel('Count', fontsize=12)
 
 # Add a legend
-ax.legend(title='Decision Outcome', loc='upper right', fontsize=10)
+ax.legend(title='SSVC Decision Outcome', loc='upper right', fontsize=10)
 
 # Add gridlines for better readability
 ax.grid(axis='y', linestyle='--', alpha=0.7)
