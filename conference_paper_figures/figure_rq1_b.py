@@ -7,6 +7,7 @@ from matplotlib.patches import Patch
 from termcolor import cprint
 import ssvc
 import random
+import re
 
 # Function to get SSVC decision
 def get_ssvc_decision(e: str, a: str, ti: str, mw: str) -> str:
@@ -29,6 +30,23 @@ def get_ssvc_decision(e: str, a: str, ti: str, mw: str) -> str:
         cprint(f"Error in SSVC decision: {e}", "red")
         return 'unknown'
 
+# Function to process LLM names
+def process_llm_name(llm_name):
+    if '/' in llm_name:
+        # Extract content between / and the next -
+        parts = llm_name.split('/')
+        if len(parts) > 1:
+            after_slash = parts[-1]
+            if '-' in after_slash:
+                result = after_slash.split('-', 1)[0]
+            else:
+                result = after_slash
+            # Capitalize the first letter
+            return result[0].upper() + result[1:] if result else result
+    
+    # If no /, just return the original name
+    return llm_name
+
 # Reset all rcParams to defaults
 plt.rcParams.update(plt.rcParamsDefault)
 
@@ -43,6 +61,9 @@ prompt_queries_llm_responses_df = pd.read_csv('prompt_queries_llm_responses.csv'
 
 # Filter to include only high risk scenarios
 high_risk_df = prompt_queries_llm_responses_df[prompt_queries_llm_responses_df['scenario_system_role_risk'] == 'high']
+
+# Process LLM names in the DataFrame
+high_risk_df['llm'] = high_risk_df['llm'].apply(process_llm_name)
 
 # Option 3: Alternative syntax that some find more readable
 random_llm_value = random.choice(high_risk_df['llm'].unique())
@@ -98,6 +119,9 @@ combined_cross_tab = combined_cross_tab[decision_order]
 # Calculate row totals for percentage calculations
 row_totals = combined_cross_tab.sum(axis=1)
 
+# Convert counts to proportions
+combined_cross_tab_pct = combined_cross_tab.div(row_totals, axis=0) * 100
+
 # Define custom colors for each decision
 colors = {
     'error': 'black',
@@ -118,17 +142,20 @@ patterns = {
     'Act': '*'
 }
 
-# Create the figure with appropriate dimensions for a single column
-fig, ax = plt.subplots(figsize=(3.5, 7.0), dpi=300)
+# Capitalize the first letter of decision names for the legend
+capitalized_decision_names = {decision: decision[0].upper() + decision[1:] if decision not in ['error', 'unknown'] else decision for decision in decision_order}
+
+# Create the figure with 2:1 width-to-height ratio
+fig, ax = plt.subplots(figsize=(7.0, 3.5), dpi=300)
 
 # Create the stacked bar chart with custom colors
-bottom = np.zeros(len(combined_cross_tab))
+bottom = np.zeros(len(combined_cross_tab_pct))
 
 # Plot each decision category as a separate bar segment with pattern
 for decision in decision_order:
-    if decision in combined_cross_tab.columns:
-        bars = ax.bar(combined_cross_tab.index, combined_cross_tab[decision], 
-                      bottom=bottom, label=decision, color=colors[decision],
+    if decision in combined_cross_tab_pct.columns:
+        bars = ax.bar(combined_cross_tab_pct.index, combined_cross_tab_pct[decision], 
+                      bottom=bottom, label=capitalized_decision_names[decision], color=colors[decision],
                       edgecolor='black', linewidth=0.5)
         
         # Add pattern to bars
@@ -136,61 +163,74 @@ for decision in decision_order:
             bar.set_hatch(patterns[decision])
             
         # Update the bottom for the next series
-        bottom += np.array(combined_cross_tab[decision])
+        bottom += np.array(combined_cross_tab_pct[decision])
 
 # Add labels and title with appropriate font sizes
-# ax.set_title('SSVC Decisions: LLMs vs Vulnrichment\n(Mission & Wellbeing High Risk Scenarios)', fontsize=10)
 ax.set_xlabel('', fontsize=9)  # No x-label needed
-ax.set_ylabel('Count', fontsize=9)
+ax.set_ylabel('Proportion (%)', fontsize=9)
 
 # Rotate x-tick labels and make them smaller
 plt.xticks(rotation=45, ha='right', fontsize=8)
 plt.yticks(fontsize=8)
 
 # Create custom legend elements with colors and patterns
-legend_elements = []
-for decision in decision_order:
-    if decision in combined_cross_tab.columns and combined_cross_tab[decision].sum() > 0:
-        element = Patch(facecolor=colors[decision], edgecolor='black',
-                        label=decision, hatch=patterns[decision])
-        legend_elements.append(element)
+# Only include decisions that have at least 1% in any category
+legend_elements = [Patch(facecolor=colors[d], edgecolor='black', 
+                         label=d.capitalize(), hatch=patterns[d]) 
+                  for d in decision_order 
+                  if d in combined_cross_tab_pct.columns and (combined_cross_tab_pct[d] > 1.0).any()]
 
 # Add the legend below the plot with more space and more columns
 ax.legend(handles=legend_elements, title='SSVC Decision', fontsize=7, 
           title_fontsize=8, loc='upper center', bbox_to_anchor=(0.5, -0.25), 
           ncol=3)
 
-# Add data labels to each segment with white background boxes and percentages
-# Only show labels for segments that represent > 1% of the total
-# Position labels slightly to the right of center
-for i, decision in enumerate(decision_order):
-    if decision in combined_cross_tab.columns:
-        for j, value in enumerate(combined_cross_tab[decision]):
-            if value > 0:  # Only add labels for non-zero values
-                # Calculate the vertical position (middle of the segment)
-                height = combined_cross_tab[decision][j]
-                # Calculate the bottom position for this segment
-                bottom_pos = 0
-                for k in range(i):
-                    if decision_order[k] in combined_cross_tab.columns:
-                        bottom_pos += combined_cross_tab[decision_order[k]][j]
-                
-                # Calculate percentage
-                percentage = (value / row_totals[j]) * 100
-                
-                # Only show labels for segments that represent > 1% of the total
-                if percentage > 1.0:
-                    # Position label in the middle of each segment, slightly to the right
-                    y_pos = bottom_pos + height/2
-                    x_pos = j + 0.15  # Slightly to the right of center
-                    
-                    # Add white background box behind text with count and percentage
-                    ax.text(x_pos, y_pos, f"{int(value)}\n({percentage:.1f}%)", 
-                           ha='left', va='center',  # Left-aligned for right-of-center positioning
-                           fontsize=6, color='black',
-                           fontweight='bold',
-                           bbox=dict(facecolor='white', alpha=0.95, edgecolor='black', 
-                                     boxstyle='round,pad=0.3', linewidth=0.5))
+# Add data labels to each segment with alternating left/right positions within each stacked bar
+for j in range(len(combined_cross_tab_pct.index)):  # Loop through columns (stacked bars)
+    # Track which segments in this column get labels
+    labeled_segments = []
+    
+    # First pass: identify which segments will get labels (>1%)
+    for i, decision in enumerate(decision_order):
+        if decision in combined_cross_tab_pct.columns:
+            value = combined_cross_tab_pct[decision][j]
+            if value > 1.0:  # Only segments > 1% get labels
+                labeled_segments.append(i)
+    
+    # Second pass: add the labels with alternating positions
+    for idx, segment_idx in enumerate(labeled_segments):
+        decision = decision_order[segment_idx]
+        value = combined_cross_tab_pct[decision][j]
+        
+        # Calculate the vertical position (middle of the segment)
+        height = value
+        # Calculate the bottom position for this segment
+        bottom_pos = 0
+        for k in range(segment_idx):
+            if decision_order[k] in combined_cross_tab_pct.columns:
+                bottom_pos += combined_cross_tab_pct[decision_order[k]][j]
+        
+        # Determine position based on segment index in the labeled segments list
+        if idx % 2 == 0:  # Even indices go right
+            x_pos = j + 0.15  # Slightly to the right
+            ha = 'left'
+        else:  # Odd indices go left
+            x_pos = j - 0.15  # Slightly to the left
+            ha = 'right'
+        
+        # Position label in the middle of each segment
+        y_pos = bottom_pos + height/2
+        
+        # Get the original count value
+        count_value = combined_cross_tab[decision][j]
+        
+        # Add white background box behind text with count and percentage
+        ax.text(x_pos, y_pos, f"{int(count_value)}\n({value:.1f}%)", 
+               ha=ha, va='center',  # Alignment based on position
+               fontsize=6, color='black',
+               fontweight='bold',
+               bbox=dict(facecolor='white', alpha=0.95, edgecolor='black', 
+                         boxstyle='round,pad=0.3', linewidth=0.5))
 
 # Adjust the bottom margin to prevent overlap between x-labels and legend
 plt.subplots_adjust(bottom=0.45)
@@ -202,4 +242,4 @@ plt.tight_layout(rect=[0, 0.15, 1, 0.95])
 plt.savefig('ssvc_decisions_comparison_high_risk.pdf', bbox_inches='tight', dpi=600)
 plt.savefig('ssvc_decisions_comparison_high_risk.png', bbox_inches='tight', dpi=600)
 
-print("Professional vertical bar chart comparing LLM decisions to Vulnrichment ground truth saved.")
+print("Professional chart with all requested modifications saved.")
