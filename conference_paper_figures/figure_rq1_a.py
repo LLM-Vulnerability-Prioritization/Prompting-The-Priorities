@@ -21,6 +21,7 @@ plt.style.use('seaborn-v0_8-whitegrid')
 df = pd.read_csv('llm_pt_sdp_f1_harmonic_means.csv', delimiter='\t')
 
 # Get unique values for categorical variables
+df['llm'] = df['llm'].str.split('-', n=1).str[0].str.capitalize()
 llms = df['llm'].unique()
 prompts = df['prompt'].unique()
 decision_points = df['ssvc_decision_point'].unique()
@@ -140,7 +141,8 @@ decision_legend = ax.legend(handles=legend_elements[len(top_prompts):],
 
 # Set x-axis ticks to LLM names
 ax.set_xticks(range(len(llms)))
-ax.set_xticklabels([llm.split('/')[-1] for llm in sorted(llms)], rotation=45, ha='right', fontsize=9)
+ax.set_xticklabels([llm.split('/')[-1].split('-', 1)[0].capitalize() for llm in sorted(llms)], 
+                   rotation=45, ha='right', fontsize=9)
 ax.tick_params(axis='y', labelsize=9)
 
 # Add labels and title with appropriate font sizes
