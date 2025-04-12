@@ -56,8 +56,30 @@ llm_markers = {llm: markers[i % len(markers)] for i, llm in enumerate(sorted(top
 
 # Define a professional color palette for prompting techniques
 # Using a colorblind-friendly palette from seaborn
-colors = sns.color_palette("colorblind", len(top_prompts))
-prompt_colors = {prompt: colors[i] for i, prompt in enumerate(sorted(top_prompts))}
+distinct_colors = [
+    '#FF4500',  # Orange Red
+    '#1E90FF',  # Dodger Blue
+    '#32CD32',  # Lime Green
+    '#FF1493',  # Deep Pink
+    '#FFD700',  # Gold
+    '#8A2BE2',  # Blue Violet
+    '#00FFFF',  # Cyan
+    '#FF8C00',  # Dark Orange
+    '#008000',  # Green
+    '#E6194B',  # Red
+    '#000000',  # Black
+]
+
+# Convert to RGB format for matplotlib (if needed)
+distinct_colors_rgb = []
+for color in distinct_colors:
+    # Convert hex to RGB
+    r = int(color[1:3], 16) / 255.0
+    g = int(color[3:5], 16) / 255.0
+    b = int(color[5:7], 16) / 255.0
+    distinct_colors_rgb.append((r, g, b))
+
+prompt_colors = {prompt: distinct_colors_rgb[i % len(distinct_colors_rgb)] for i, prompt in enumerate(sorted(top_prompts))}
 
 # Create the figure with appropriate dimensions
 fig, ax = plt.subplots(figsize=(10, 6), dpi=300)
@@ -123,6 +145,15 @@ legend_elements = []
 for llm in sorted(top_llms):
     # Use just the model name (after the last slash) for cleaner labels
     model_name = llm.split('/')[-1]
+    
+    # Extract the first word before the first hyphen
+    if '-' in model_name:
+        model_name = model_name.split('-', 1)[0]
+    
+    # Capitalize the first letter
+    if model_name:
+        model_name = model_name[0].upper() + model_name[1:]
+    
     legend_elements.append(plt.Line2D([0], [0], marker=llm_markers[llm], color='w', 
                           markerfacecolor='gray', markersize=8, label=model_name))
 
