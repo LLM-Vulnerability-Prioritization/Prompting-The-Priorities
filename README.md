@@ -1,4 +1,4 @@
-Workshop Paper for the Workshop on AI for Cyber Threat Intelligence (WAITI) at the Annual Computer Security Applications Conference (ACSAC) [TBC].
+_Prompting the Priorities: Evaluating LLMs for Organization-Specific Vulnerability Prioritization_ - Workshop Paper for the Workshop on AI for Cyber Threat Intelligence (WAITI) at the 2025 Annual Computer Security Applications Conference (ACSAC) [TBC].
 
 Python script that: (1) processes ground truth SSVC data from Vulnrichment; (2) processes vulnerability data from VulZoo; (3) parses the vulnerability data by prompting technique and prompting best practice; (4) selects sample of vulnerabilities common to both Vulnrichment and VulZoo; (5) queries LLMs with the sample prompts via OpenRouter API; and (6) evaluates LLM and prompting technique performance.
 
